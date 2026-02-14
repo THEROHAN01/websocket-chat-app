@@ -8,4 +8,10 @@ ws.on("connection" , (socket) => {
     console.log("New client connected");
     userCount++;
     console.log(`Total users connected: ${userCount}`);
+
+    socket.on("message" , (message) => {
+
+        console.log(`Received message: ${message}`);
+        
+    })
 })
