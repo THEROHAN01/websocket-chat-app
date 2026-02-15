@@ -1,6 +1,9 @@
 import { WebSocket, WebSocketServer } from "ws";
 
-const wss = new WebSocketServer({port: 8081});
+const wss = new WebSocketServer({
+    port: 8081,
+    host: '0.0.0.0'
+});
 
 interface User {
     socket : WebSocket ;
@@ -11,7 +14,15 @@ interface User {
 let userCount = 0 ;
 let allSockets: User[] = [] ;
 
+// Log when server starts
+wss.on('listening', () => {
+    console.log('✓ WebSocket server is listening on ws://localhost:8081');
+    console.log('✓ Server is ready to accept connections');
+});
 
+wss.on('error', (error) => {
+    console.error('✗ WebSocket server error:', error);
+});
 
 wss.on("connection" , (socket) => {
     userCount++;
