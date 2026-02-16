@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat App</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #1a1a2e; color: #eee; height: 100vh; display: flex; justify-content: center; align-items: center; }
+
+    .container { width: 420px; max-height: 90vh; display: flex; flex-direction: column; }
+
+    /* Join screen */
+    #join-screen { text-align: center; }
+    #join-screen h1 { font-size: 1.6rem; margin-bottom: 1.5rem; }
+    #join-screen input { width: 100%; padding: 12px 16px; border: 1px solid #333; border-radius: 8px; background: #16213e; color: #eee; font-size: 1rem; margin-bottom: 12px; outline: none; }
+    #join-screen input:focus { border-color: #0f3460; }
+    #join-screen button { width: 100%; padding: 12px; border: none; border-radius: 8px; background: #0f3460; color: #eee; font-size: 1rem; cursor: pointer; }
+    #join-screen button:hover { background: #1a4a8a; }
+
+    /* Chat screen */
+    #chat-screen { display: none; flex-direction: column; height: 80vh; }
+    #chat-header { padding: 14px 16px; background: #16213e; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center; }
+    #chat-header .room-name { font-weight: 600; }
+    #chat-header .status { font-size: 0.8rem; color: #4ecca3; }
+
+    #messages { flex: 1; overflow-y: auto; padding: 16px; background: #0f0f23; display: flex; flex-direction: column; gap: 8px; }
+    .msg { padding: 8px 12px; border-radius: 8px; max-width: 85%; word-wrap: break-word; font-size: 0.95rem; }
+    .msg.sent { background: #0f3460; align-self: flex-end; }
+    .msg.received { background: #222; align-self: flex-start; }
+    .msg.system { background: none; color: #666; font-size: 0.8rem; align-self: center; text-align: center; }
+
+    #input-area { display: flex; gap: 8px; padding: 12px; background: #16213e; border-radius: 0 0 12px 12px; }
+    #input-area input { flex: 1; padding: 10px 14px; border: 1px solid #333; border-radius: 8px; background: #1a1a2e; color: #eee; font-size: 0.95rem; outline: none; }
+    #input-area input:focus { border-color: #0f3460; }
+    #input-area button { padding: 10px 20px; border: none; border-radius: 8px; background: #0f3460; color: #eee; cursor: pointer; font-size: 0.95rem; }
+    #input-area button:hover { background: #1a4a8a; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Join Screen -->
+    <div id="join-screen">
+      <h1>Join a Chat Room</h1>
+      <input type="text" id="room-input" placeholder="Room ID" autofocus>
+      <button onclick="joinRoom()">Join</button>
+    </div>
+
+    <!-- Chat Screen -->
+    <div id="chat-screen">
+      <div id="chat-header">
+        <span class="room-name" id="room-label"></span>
+        <span class="status" id="status">connected</span>
+      </div>
+      <div id="messages"></div>
+      <div id="input-area">
+        <input type="text" id="msg-input" placeholder="Type a message..." autofocus>
+        <button onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let ws;
+    let currentRoom;
+
+    function connect() {
+      ws = new WebSocket('ws://localhost:8081');
+
+      ws.onopen = () => {
+        document.getElementById('status').textContent = 'connected';
+        document.getElementById('status').style.color = '#4ecca3';
+      };
+
+      ws.onclose = () => {
+        document.getElementById('status').textContent = 'disconnected';
+        document.getElementById('status').style.color = '#e74c3c';
+        addMessage('Connection lost. Refresh to reconnect.', 'system');
+      };
+
+      ws.onmessage = (event) => {
+        addMessage(event.data, 'received');
+      };
+    }
+
+    function joinRoom() {
+      const roomId = document.getElementById('room-input').value.trim();
+      if (!roomId) return;
+
+      currentRoom = roomId;
+      connect();
+
+      ws.onopen = () => {
+        document.getElementById('status').textContent = 'connected';
+        document.getElementById('status').style.color = '#4ecca3';
+        ws.send(JSON.stringify({ type: 'join', payload: { roomId } }));
+
+        document.getElementById('join-screen').style.display = 'none';
+        document.getElementById('chat-screen').style.display = 'flex';
+        document.getElementById('room-label').textContent = 'Room: ' + roomId;
+        document.getElementById('msg-input').focus();
+
+        addMessage('Joined room "' + roomId + '"', 'system');
+      };
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('msg-input');
+      const message = input.value.trim();
+      if (!message || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+      ws.send(JSON.stringify({ type: 'chat', payload: { message } }));
+      input.value = '';
+    }
+
+    function addMessage(text, type) {
+      const container = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = 'msg ' + type;
+      div.textContent = text;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // Enter key to submit
+    document.getElementById('room-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') joinRoom();
+    });
+    document.getElementById('msg-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+  </script>
+</body>
+</html>
